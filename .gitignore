@@ -20,12 +20,19 @@ build/
 # Environment variables
 .env
 .env.*
+!.env.example
 
-# Docker
-.dockerignore
+# Frontend
+node_modules/
 
 # Data files (populated at runtime; keep only .gitkeep)
 data/*.json
+backend/data/users.json
+backend/data/itineraries.json
+backend/data/chat_messages.json
+backend/data/*.lock
+backend/data/*.tmp
+backend/app/data/
 
 # IDE / editor
 .vscode/

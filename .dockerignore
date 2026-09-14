@@ -1,0 +1,16 @@
+.git
+**/.venv
+**/venv
+**/node_modules
+**/dist
+**/__pycache__
+**/.env
+**/.env.*
+backend/data/users.json
+backend/data/itineraries.json
+backend/data/chat_messages.json
+backend/data/*.lock
+backend/data/*.tmp
+backend/app/data
+.vscode
+.idea
