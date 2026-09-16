@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Map as MapLibreMap, Marker, NavigationControl, ScaleControl } from "maplibre-gl";
+import { Map as MapLibreMap, Marker, NavigationControl, ScaleControl, setWorkerUrl } from "maplibre-gl";
+import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { request, useData } from "../api";
 import { Feedback, Icon, PageHeading } from "../components";
@@ -8,6 +9,9 @@ import "./map.css";
 const CAMEROON_BOUNDS = [[8.3, 1.6], [16.3, 13.2]];
 const MAP_STYLE = import.meta.env.VITE_MAP_STYLE_URL || "https://tiles.openfreemap.org/styles/liberty";
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// MapLibre's default relative worker URL is not preserved by Vite's hashed bundles.
+setWorkerUrl(mapWorkerUrl);
 
 export default function MapPage({ draft, onAdd }) {
   const catalogue = useData("/destinations");
@@ -18,6 +22,7 @@ export default function MapPage({ draft, onAdd }) {
   const [selected, setSelected] = useState(null);
   const [mapError, setMapError] = useState("");
   const [mapReady, setMapReady] = useState(false);
+  const [mapRendered, setMapRendered] = useState(false);
   const [mapVersion, setMapVersion] = useState(0);
   const [tilted, setTilted] = useState(true);
   const container = useRef(null);
@@ -28,54 +33,79 @@ export default function MapPage({ draft, onAdd }) {
   useEffect(() => {
     let instance;
     let stopped = false;
-    let styleReady = false;
-    setMapReady(false); setMapError("");
-    try {
-      instance = new MapLibreMap({
-        container: container.current, style: MAP_STYLE,
-        bounds: CAMEROON_BOUNDS, maxBounds: CAMEROON_BOUNDS,
-        fitBoundsOptions: { padding: 24, pitch: tilted ? 50 : 0, bearing: tilted ? -12 : 0 },
-        maxPitch: 70, minZoom: 4, maxZoom: 18,
-        attributionControl: { compact: true }, renderWorldCopies: false,
-      });
-    } catch {
-      setMapError("This browser could not start the 3D map. Enable WebGL/hardware acceleration, or use the place lists and search below.");
-      return;
-    }
-    map.current = instance;
-    instance.addControl(new NavigationControl({ visualizePitch: true }), "top-right");
-    instance.addControl(new ScaleControl(), "bottom-left");
-    instance.on("error", () => {
-      if (!stopped) setMapError("Some map data could not load. Check your connection or retry the map. Search and destination lists remain available.");
-    });
-    instance.on("style.load", () => {
-      if (stopped) return;
-      styleReady = true;
-      const style = instance.getStyle();
-      if (style.sources.openmaptiles && !style.layers.some((layer) => layer.type === "fill-extrusion")) {
-        const labelLayer = style.layers.find((layer) => layer.type === "symbol")?.id;
-        instance.addLayer({
-          id: "globetrotter-buildings", source: "openmaptiles", "source-layer": "building",
-          type: "fill-extrusion", minzoom: 14,
-          paint: {
-            "fill-extrusion-color": "#b9c8b2",
-            "fill-extrusion-height": ["coalesce", ["get", "render_height"], 3],
-            "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0],
-            "fill-extrusion-opacity": 0.85,
-          },
-        }, labelLayer);
+    let timer;
+    let observer;
+    const controller = new AbortController();
+    setMapReady(false); setMapRendered(false); setMapError("");
+    async function initialize() {
+      // A failed module download otherwise leaves MapLibre's shared worker pool unusable on retry.
+      try {
+        const response = await fetch(mapWorkerUrl, {
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+        });
+        if (!response.ok || !/\b(?:javascript|ecmascript)\b/i.test(response.headers.get("content-type") || "")) {
+          throw new Error(`Invalid map worker response (${response.status})`);
+        }
+        await response.arrayBuffer();
+      } catch (error) {
+        if (!stopped) {
+          console.error("Map worker download failed", error);
+          setMapError("The map engine could not load. Check your connection and try again.");
+        }
+        return;
       }
-      setMapReady(true); setMapError("");
-    });
-    const timer = setTimeout(() => {
-      if (!stopped && !styleReady) setMapError("The map is taking too long to load. Try again, or use the search results below.");
-    }, 15000);
-    const observer = new ResizeObserver(() => instance.resize());
-    observer.observe(container.current);
+      if (stopped) return;
+      try {
+        instance = new MapLibreMap({
+          container: container.current, style: MAP_STYLE,
+          bounds: CAMEROON_BOUNDS, maxBounds: CAMEROON_BOUNDS,
+          fitBoundsOptions: { padding: 24, pitch: tilted ? 50 : 0, bearing: tilted ? -12 : 0 },
+          maxPitch: 70, minZoom: 4, maxZoom: 18,
+          attributionControl: { compact: true }, renderWorldCopies: false,
+        });
+      } catch {
+        setMapError("This browser could not start the 3D map. Enable WebGL/hardware acceleration, or use the place lists and search below.");
+        return;
+      }
+      map.current = instance;
+      instance.addControl(new NavigationControl({ visualizePitch: true }), "top-right");
+      instance.addControl(new ScaleControl(), "bottom-left");
+      instance.on("error", () => {
+        if (!stopped) setMapError("Some map data could not load. Check your connection or retry the map. Search and destination lists remain available.");
+      });
+      instance.on("style.load", () => {
+        if (stopped) return;
+        const style = instance.getStyle();
+        if (style.sources.openmaptiles && !style.layers.some((layer) => layer.type === "fill-extrusion")) {
+          const labelLayer = style.layers.find((layer) => layer.type === "symbol")?.id;
+          instance.addLayer({
+            id: "globetrotter-buildings", source: "openmaptiles", "source-layer": "building",
+            type: "fill-extrusion", minzoom: 14,
+            paint: {
+              "fill-extrusion-color": "#b9c8b2",
+              "fill-extrusion-height": ["coalesce", ["get", "render_height"], 3],
+              "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0],
+              "fill-extrusion-opacity": 0.85,
+            },
+          }, labelLayer);
+        }
+        setMapReady(true);
+      });
+      instance.on("load", () => {
+        clearTimeout(timer);
+        if (!stopped) { setMapRendered(true); setMapError(""); }
+      });
+      timer = setTimeout(() => {
+        if (!stopped && !instance.loaded()) setMapError("Map details could not finish loading. Check your connection and try again. Search and destination lists remain available.");
+      }, 15000);
+      observer = new ResizeObserver(() => instance.resize());
+      observer.observe(container.current);
+    }
+    initialize();
     return () => {
-      stopped = true; clearTimeout(timer); observer.disconnect();
+      stopped = true; controller.abort(); clearTimeout(timer); observer?.disconnect();
       markers.current.forEach((marker) => marker.remove()); markers.current = [];
-      instance.remove(); map.current = null;
+      instance?.remove(); map.current = null;
     };
   }, [mapVersion]);
 
@@ -151,7 +181,7 @@ export default function MapPage({ draft, onAdd }) {
       <div>{results.map((place) => <button className={selected?.id === place.id ? "selected" : ""} key={place.id} onClick={() => setSelected(place)}><Icon name="pin" /><span><strong>{place.name}</strong><small>{place.display_name}</small></span></button>)}</div>
     </section>}
     <Feedback error={mapError} retry={() => setMapVersion((value) => value + 1)} />
-    <div className="map-view-toolbar"><button className="secondary" type="button" disabled={!mapReady} aria-pressed={tilted} onClick={toggleTilt}>{tilted ? "Switch to 2D" : "Switch to 3D"}</button><button className="secondary" type="button" disabled={!mapReady} onClick={resetView}>Show Cameroon</button><small>{mapReady ? "Drag to move. Right-drag to tilt and rotate." : mapError ? "Map unavailable. Use the lists or retry above." : "Loading 3D map..."}</small></div>
+    <div className="map-view-toolbar"><button className="secondary" type="button" disabled={!mapReady} aria-pressed={tilted} onClick={toggleTilt}>{tilted ? "Switch to 2D" : "Switch to 3D"}</button><button className="secondary" type="button" disabled={!mapReady} onClick={resetView}>Show Cameroon</button><small role="status">{mapError ? "Map incomplete. Use the lists or retry above." : mapRendered ? "Drag to move. Right-drag to tilt and rotate." : "Loading map details..."}</small></div>
     <div className="map-layout"><div className="geographic-map maplibre-container" ref={container} role="region" aria-label="3D map of Cameroon" />
       <aside className="map-list"><h3>From our collection</h3><Feedback loading={catalogue.loading} error={catalogue.error} retry={catalogue.reload} />{catalogue.data?.map((destination) => <div key={destination.id} className="map-place-row"><a href={`#/destination/${destination.id}`} aria-label={`View ${destination.name}`}><img src={destination.image} alt={destination.name} /></a><button className={selected?.id === destination.id ? "active" : ""} onClick={() => setSelected(destination)}><span><strong>{destination.name}</strong><small>{destination.city}</small></span><Icon name="pin" size={15} /></button></div>)}</aside></div>
     {selected && <div className="map-selection"><div><p className="eyebrow">{selected.source ? "FOUND IN CAMEROON" : "YOUR NEXT STOP?"}</p><h2>{selected.name}</h2><p>{selected.description || selected.display_name}</p><small className="muted">Coordinates: {selected.lat}, {selected.lng}</small></div>
