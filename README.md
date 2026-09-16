@@ -339,6 +339,16 @@ Each API exposes liveness (`/health`) and storage readiness (`/ready`). Gateway 
 
 For backup, stop writes and back up **all four named volumes**, including each volume's `uploads/` files, plus the signing key securely. Keep a copy before upgrading. Native data and Docker volumes are separate stores. Restore procedures and production-grade backup automation are future work.
 
+### Troubleshooting unavailable storage
+
+`Data storage is unavailable. Please contact the administrator.` means a JSON read, file lock, or write failed. The app deliberately refuses to treat inaccessible data as an empty database. **Do not replace JSON files with `[]`, delete volumes, run a factory reset, or use `docker compose down -v` to clear this error.**
+
+- Check `docker compose ps` and the owning service's logs, for example `docker compose logs --tail 100 user`. A malformed JSON file, permission error, full disk, and read-only filesystem require different repairs.
+- If Docker reports `Read-only file system` or `Input/output error`, back up any readable volume data first. Restart Docker Desktop (this briefly interrupts other Docker apps), then run `docker compose up -d --wait` and check `http://localhost:8000/ready`. A normal restart does not delete named volumes. If filesystem errors persist, investigate Docker Desktop/WSL storage rather than overwriting application data.
+- Keep Docker Desktop and its engine running while using the Docker setup. If a restart remains stuck at `Starting`, its WSL environment may need to be restarted as well. Check for other running WSL distributions first; a global WSL shutdown interrupts those workloads too.
+- Run only one setup on ports 5173 and 8000. On Windows, a native server listening on `0.0.0.0:8000` can coexist with Docker's more-specific `127.0.0.1:8000` listener; Vite's localhost proxy may then reach Docker instead of the native API. Check `Get-NetTCPConnection -State Listen -LocalPort 5173,8000` and identify the owning processes before stopping anything.
+- For Docker operation, stop this project's native Vite/Uvicorn servers. For native operation, stop this project's Compose stack with `docker compose stop` first. Native JSON files and Docker-volume accounts are separate; switching modes does not migrate or merge them.
+
 ## Course references and design decisions
 
 Primary source supplied by the user: **Engr. Daniel Moune, ICT University, CS4122 Distributed Systems and Cloud Computing, Class 02, July 14, 2026**, file `Class 02 - CS4122 Distributed Systems and Cloud Computing.pdf`. Page references below refer to the **43-page PDF file**, not its embedded slide counter (which uses an 84-slide deck and repeats some slides).
