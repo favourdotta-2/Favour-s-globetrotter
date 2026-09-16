@@ -2,9 +2,9 @@
 
 A React + FastAPI implementation of the CS4122 GlobeTrotter capstone, using **JSON files, not a database server**. Discover places in Cameroon, build and share itineraries, explore a geographic map, personalize recommendations, and talk with other travelers.
 
-**Agreed scope:** complete local Docker services. Cloud deployment and autoscaling are deferred, as requested. Containerization is implemented; the full course Phase 3 cloud deliverable is **not** claimed complete.
+**Scope:** local Docker services and single-VPS hosting configuration for **https://dotta-globe.duckdns.org** on **109.199.120.38**. The VPS uses its existing host Nginx for HTTPS. Deployment on the remote server, certificate issuance, data migration, and autoscaling are separate operational steps; the full course Phase 3 cloud deliverable is **not** claimed complete.
 
-## Start the application
+## Start the application locally
 
 Requirements: Docker Desktop with the **Linux engine running** and Docker Compose.
 
@@ -33,6 +33,87 @@ docker compose down
 ```
 
 Named volumes survive container restarts, rebuilds, and normal `down`. Do **not** add `-v` unless intentionally deleting your saved accounts, itineraries, and messages.
+
+## Host at https://dotta-globe.duckdns.org
+
+The public URL is **https://dotta-globe.duckdns.org**, not the raw IP or a URL with port 5173/8000. Its DNS A record must point to **109.199.120.38**. Remove or correct a stale AAAA record if the VPS is not serving the domain over IPv6.
+
+The hosted setup reuses the existing **host-installed Nginx**:
+
+```text
+Internet -> host Nginx :443 (trusted HTTPS)
+         -> 127.0.0.1:5173 (React / frontend Nginx)
+         -> gateway:8000 -> private FastAPI services
+```
+
+Do not replace the internal Docker service names, health-check loopback addresses, or Vite's local development proxy with the public IP. API calls and media URLs already use same-origin `/api`, and shared itinerary links use the browser's current origin, so they automatically use the HTTPS domain when hosted. The hosted Compose override sets the gateway's allowed frontend origin to that domain. Ports 5173 and 8000 stay bound to loopback; only the host Nginx should be public.
+
+### 1. Start the containers on the VPS
+
+Copy or check out the updated repository on the VPS. Install Docker Engine and the Docker Compose plugin there if needed. Run the following **on the Linux VPS**, from the repository root, not on your Windows development computer.
+
+Create a private signing key only if the VPS does not already have an `.env`:
+
+```bash
+if [ ! -f .env ]; then
+    umask 077
+    key=$(openssl rand -hex 32) || exit 1
+    printf 'SECRET_KEY=%s\nFRONTEND_ORIGIN=https://dotta-globe.duckdns.org\n' "$key" > .env
+    unset key
+fi
+
+docker compose -f docker-compose.yml -f docker-compose.hosted.yml up -d --build --wait --wait-timeout 180
+docker compose -f docker-compose.yml -f docker-compose.hosted.yml ps
+curl --fail http://127.0.0.1:5173/
+curl --fail http://127.0.0.1:8000/ready
+```
+
+Keep an existing valid `SECRET_KEY` unchanged; changing it logs everyone out. An existing empty/invalid key must be corrected before starting. Do not commit `.env` or put secrets in frontend build arguments. Local accounts and uploads do not migrate to the VPS automatically: back up and transfer the four service data volumes separately if you need to preserve them. Do not delete or reset volumes to deploy.
+
+### 2. Connect the existing host Nginx
+
+Use [deploy/nginx/dotta-globe.duckdns.org.conf](deploy/nginx/dotta-globe.duckdns.org.conf) as the domain's reverse-proxy server block. This is an **HTTP bootstrap configuration**, not a replacement for a valid certificate. Back up the domain's current Nginx configuration first. If a server block already serves this domain, update that block instead of leaving duplicate `server_name` entries; preserve unrelated websites.
+
+On a Debian/Ubuntu host, the usual locations are `/etc/nginx/sites-available/` and `/etc/nginx/sites-enabled/`. For a new site only:
+
+```bash
+sudo cp deploy/nginx/dotta-globe.duckdns.org.conf /etc/nginx/sites-available/dotta-globe.duckdns.org
+sudo ln -s /etc/nginx/sites-available/dotta-globe.duckdns.org /etc/nginx/sites-enabled/dotta-globe.duckdns.org
+sudo nginx -t
+```
+
+Only reload after `nginx -t` succeeds:
+
+```bash
+sudo systemctl reload nginx
+```
+
+Allow inbound TCP **80 and 443** in the VPS firewall/provider firewall, while keeping SSH access. Do not open 5173 or 8000 to the internet. This configuration assumes Nginx runs on the host; a separately containerized Nginx needs a shared Docker network instead of the host loopback upstream.
+
+### 3. Obtain or repair a trusted HTTPS certificate
+
+Install Certbot with its Nginx plugin on the VPS if needed (for Debian/Ubuntu, the `certbot` and `python3-certbot-nginx` packages). With DNS pointing to this server and port 80 reachable, run:
+
+```bash
+sudo certbot --nginx --redirect -d dotta-globe.duckdns.org
+sudo nginx -t
+sudo certbot renew --dry-run
+```
+
+Certbot updates the matching Nginx server block with the certificate and HTTP-to-HTTPS redirect. Follow its certificate replacement/renewal prompts if the domain already has a certificate; check the renewal timer/service is enabled. An expired, self-signed, or mismatched certificate is not sufficient. Do not bypass browser certificate warnings or disable TLS verification.
+
+Confirm both the redirect and trusted HTTPS from outside the VPS:
+
+```bash
+curl -I http://dotta-globe.duckdns.org/
+curl --fail -I https://dotta-globe.duckdns.org/
+```
+
+Then open **https://dotta-globe.duckdns.org**, sign in, and allow location access when requesting directions. A trusted HTTPS origin is required for browser geolocation and clipboard sharing online. Until the server configuration and certificate steps succeed, changing application settings alone does not make the domain operational.
+
+For later updates, use the same two Compose files in the first command; do not run an additional native backend or frontend on these ports. For the Phase 1 monolith, use `docker-compose.monolith.yml` in place of `docker-compose.yml`, with the same hosted override; never run both stacks on the same ports.
+
+This is a **single-server demonstration**, not an autoscaled production deployment. Back up JSON volumes and uploads, monitor disk space, and keep one writer per service. The public OSRM demo is not a production routing service; increased traffic needs suitable routing/geocoding providers and shared rate limiting as described below.
 
 ## Product features
 
@@ -213,6 +294,8 @@ images/
 scripts/Initialize-Local.ps1
 docker-compose.yml
 docker-compose.monolith.yml
+docker-compose.hosted.yml
+deploy/nginx/dotta-globe.duckdns.org.conf  # Host Nginx HTTP bootstrap; Certbot enables HTTPS
 ```
 
 The original root `app/`, `Dockerfile`, and `requirements.txt` are retained as the historical Flask starter. They are **not used** by either current Compose setup; use the frontend/backend instructions here.
@@ -252,7 +335,7 @@ Open http://localhost:5173. Native monolith OpenAPI docs: http://localhost:8000/
 | --- | --- |
 | `SERVICE_NAME` | `monolith`; Compose builds `user`, `itinerary`, `recommendation`, `chat`, `gateway` variants |
 | `SECRET_KEY` | Required for user/monolith; random, at least 32 characters |
-| `FRONTEND_ORIGIN` | `http://localhost:5173` |
+| `FRONTEND_ORIGIN` | Native/local default: `http://localhost:5173`; hosted override: `https://dotta-globe.duckdns.org` |
 | `DATA_DIR` | Native: `backend/data`; Docker: `/var/lib/globetrotter` |
 | `CATALOG_PATH` | Versioned `backend/data/destinations.json`; Docker: `/app/data/destinations.json` |
 | `USER_SERVICE_URL` | `http://user:8000` |

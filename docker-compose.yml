@@ -72,7 +72,7 @@ services:
       args:
         SERVICE_NAME: gateway
     environment:
-      FRONTEND_ORIGIN: http://localhost:5173
+      FRONTEND_ORIGIN: "${FRONTEND_ORIGIN:-http://localhost:5173}"
     depends_on:
       user:
         condition: service_healthy
