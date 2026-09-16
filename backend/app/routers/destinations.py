@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, Response
 
 from app.core.config import Settings, get_settings
 from app.core.security import get_current_user
@@ -11,6 +11,7 @@ from app.services import review_service
 from app.services.destination_service import list_destinations, map_locations, recommendations_for
 from app.services.geocoding_service import search_cameroon
 from app.services.itinerary_service import destination_popularity, list_itineraries
+from app.services.routing_service import driving_route
 
 router = APIRouter(tags=["destinations"])
 
@@ -101,3 +102,10 @@ def search_map(
     q: str = Query(min_length=3, max_length=120), settings: Settings = Depends(get_settings),
 ) -> list[dict[str, Any]]:
     return search_cameroon(q, settings)
+
+
+@router.post("/map/route")
+def route_map(
+    payload: object = Body(), settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    return driving_route(payload, settings)

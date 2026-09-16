@@ -22,6 +22,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     if settings.service_name in {"monolith", "user"} and settings.secret_key is None:
         raise RuntimeError("Set SECRET_KEY to a random value of at least 32 characters before starting.")
 
+    if settings.service_name in {"recommendation", "monolith"}:
+        # Transport logs can expose OSRM coordinate URLs; keep the app's request tracing instead.
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+        logging.getLogger("httpcore").setLevel(logging.WARNING)
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         async with httpx.AsyncClient(timeout=settings.request_timeout_seconds) as client:

@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     geocoding_user_agent: str = (
         "GlobeTrotterCameroon/1.0 (https://github.com/favourdotta-2/Favour-s-globetrotter)"
     )
+    routing_url: str = "https://router.project-osrm.org/route/v1/driving"
+    routing_user_agent: str = (
+        "GlobeTrotterCameroon/1.0 (https://github.com/favourdotta-2/Favour-s-globetrotter)"
+    )
 
 
 @lru_cache

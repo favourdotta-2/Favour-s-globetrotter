@@ -43,7 +43,7 @@ Named volumes survive container restarts, rebuilds, and normal `down`. Do **not*
 | Destination details | Full place photo/description, average star rating, traveler comments, and your editable/deletable review |
 | My itineraries | Multi-destination drafts that survive page navigation, ordered stops, optional dates, notes, create/edit/delete |
 | Shared itinerary | Explicit opt-in link sharing, public read-only view, revocable links; other users cannot edit your itinerary |
-| Explore map | MapLibre/OpenStreetMap-based tilted map, catalogue markers and Cameroon-wide search for places outside the app catalogue |
+| Explore map | Leaflet 2D OpenStreetMap, catalogue markers, Cameroon-wide search, and driving routes from the user's location |
 | My profile | Name, city, bio, interests, profile-photo upload, an app-rating form, and logout |
 | Travel lounge | Authenticated community messages, emoji and sticker pickers, photos/videos below 5 MB, and polling every five seconds |
 
@@ -71,11 +71,15 @@ The profile's **Rate us** button opens a separate GlobeTrotter feedback form. It
 - JSON files remain the database for accounts, reviews, ratings, messages, and attachment metadata. Binary images/videos are stored alongside them under the owning service's `uploads/` directory, not as base64 strings inside JSON.
 - Existing accounts without photos and existing text-only messages continue to work. No reset or manual data migration is required.
 
-### Cameroon map and external search
+### Cameroon map, external search, and driving directions
 
-The map uses [MapLibre GL JS](https://maplibre.org/) with the no-key [OpenFreeMap Liberty style](https://openfreemap.org/quick_start/), based on OpenStreetMap data. Switch between a tilted 3D perspective and 2D; drag to pan, right-drag to rotate/tilt, or use the zoom/compass controls. Building extrusions appear at street-level zoom where building footprints are available; heights may be approximate. This is not satellite imagery, a terrain survey, or a routing/navigation service.
+The map uses the original [Leaflet](https://leafletjs.com/) 2D map and standard [OpenStreetMap tiles](https://operations.osmfoundation.org/policies/tiles/). Drag to pan or use the zoom controls. It no longer requires WebGL, 3D rendering, or a MapLibre worker. Public tiles are for ordinary interactive viewing; no bulk downloads, prefetching, or offline tile packs are implemented. Keep OpenStreetMap attribution visible.
 
-Vite bundles MapLibre's module worker and its dependencies as a separate local asset; do not remove the explicit worker URL configuration. Without that worker, the terrain background/markers can appear while roads, labels, and buildings never load. The worker download is checked before map initialization so a failed download can be retried without reloading the page. Loading feedback waits for the complete map, not just its style JSON. Missing production assets return HTTP 404 instead of the application's HTML page.
+Click a destination marker or its image/name in the map's collection list. On the first selection, read the location-sharing notice and choose **Use my location**, then allow the browser's location prompt. A blue marker shows the detected origin and a blue road-following route leads to the destination, with distance and estimated driving time. Pressing **Enter** in the search field (or clicking **Search Cameroon**) selects the first match and requests the same directions; select another search result to change the target.
+
+Location sharing lasts only for that map visit. **Update route** obtains a fresh position (the browser may reuse a fix up to 60 seconds old); **Stop using my location**, clearing the selection, or leaving the page removes the current route and discards pending results. There is no continuous GPS tracking or automatic rerouting. Geolocation requires **HTTPS or localhost**, device location services, and browser permission. Denied/unavailable/timed-out location, positions outside Cameroon, missing road coverage, throttling, and provider outages show explicit errors, never a made-up straight-line route.
+
+Driving directions use the public [OSRM demo service](https://project-osrm.org/) with OpenStreetMap road data, explicitly selected for this small local demonstration. After permission, origin/destination coordinates are sent to OSRM. GlobeTrotter keeps them only in memory for the current request/view, not in JSON storage or a route cache; the app uses a POST body rather than putting coordinates in its own access-log URLs. OSRM has its own service/privacy policies. The backend conservatively allows at most one outgoing routing request per second across this single local process and rejects concurrent requests with a retry message. There are no automatic provider retries. Routes snap to mapped roads within 1 km of each endpoint; an isolated landmark may have no driving route. Estimates exclude live traffic and are not turn-by-turn navigation or a guarantee of road safety/accessibility. Do not depend on the public demo for production availability.
 
 Map navigation is locked to Cameroon's bounding area (8.3-16.3 degrees east, 1.6-13.2 degrees north). The initial view and **Show Cameroon** button use these same bounds; panning and zooming out cannot move the map away to another part of the world. This is a rectangular navigation restriction, not an exact country-border mask, so neighboring areas may still appear near the edges.
 
@@ -87,9 +91,9 @@ Map navigation is locked to Cameroon's bounding area (8.3-16.3 degrees east, 1.6
 - Allows no more than one external request per second; concurrent/too-frequent uncached searches receive an explicit retry message.
 - Reports provider/network failures rather than pretending there are no matches.
 
-Do not enter personal, private, or confidential information in searches. Only indexed places can be found; alternative spellings or nearby towns may help. Search results outside the curated catalogue can be viewed on the map but cannot be added as invalid catalogue IDs to itineraries. Search and catalogue lists remain available when WebGL is unsupported.
+Do not enter personal, private, or confidential information in searches. Only indexed places can be found; alternative spellings or nearby towns may help. Search results outside the curated catalogue can be viewed on the map but cannot be added as invalid catalogue IDs to itineraries. Search and catalogue lists remain available when tiles or geolocation are unavailable.
 
-Keep exactly **one search worker/instance** with the public provider; do not run the monolith and microservice search processes together or scale them independently against it. A larger deployment needs a suitable commercial/self-hosted provider and a shared rate limiter/cache. Set `GEOCODING_URL` and optionally `GEOCODING_USER_AGENT` in the root `.env`, then recreate the recommendation container (or monolith) to switch a Nominatim-compatible provider without changing source code. `VITE_MAP_STYLE_URL` selects a different MapLibre style at frontend build time; rebuild the frontend after changing it.
+Keep exactly **one recommendation worker/instance** with the public providers; do not run the monolith and microservices together or scale them independently against these services. A larger deployment needs suitable commercial/self-hosted providers and shared rate limiting. Set `GEOCODING_URL` / `GEOCODING_USER_AGENT` for a Nominatim-compatible search provider and `ROUTING_URL` / `ROUTING_USER_AGENT` for an OSRM-compatible driving provider in the root `.env`, then recreate the recommendation container (or monolith). `ROUTING_URL` includes the `/route/v1/driving` path. Changing provider does not require rebuilding the frontend. The old `VITE_MAP_STYLE_URL` setting is no longer used.
 
 ## Architecture
 
@@ -146,7 +150,7 @@ Recommendation API -> User API + Itinerary API for personalization
 | --- | --- | --- |
 | `user` | Registration, login, JWT validation, profile/preferences, avatars, app feedback | `users-data` volume |
 | `itinerary` | Itinerary CRUD, ownership, sharing, aggregate popularity counts | `itineraries-data` volume |
-| `recommendation` | Destination details/search, place reviews, map search, recommendation scoring | Catalogue packaged in image; reviews in `recommendations-data` |
+| `recommendation` | Destination details/search, place reviews, map search/driving routes, recommendation scoring | Catalogue packaged in image; reviews in `recommendations-data` |
 | `chat` | Authenticated shared messages and validated media files | `chat-data` volume |
 | `gateway` | Request routing, query/body/auth forwarding, explicit upstream timeout/unavailability errors | None |
 | `frontend` | Production React bundle and same-origin `/api` proxy | None |
@@ -279,6 +283,7 @@ Protected requests use `Authorization: Bearer <token>`. Tokens expire after 24 h
 | GET | `/api/recommendations?limit=6` | Signed in |
 | GET | `/api/map/locations` | Public |
 | GET | `/api/map/search?q=Kribi` | Public; Cameroon-only external search |
+| POST | `/api/map/route` | Public; `{origin: {lat, lng}, destination: {lat, lng}}` within Cameroon; returns GeoJSON LineString `geometry`, `distance_m`, `duration_s` |
 | GET | `/api/destinations/{id}` | Public destination details, rating summary, recent reviews |
 | GET, PUT, DELETE | `/api/destinations/{id}/review` | Current user's own place review |
 | GET, POST | `/api/itineraries` | Current user's trips |
@@ -377,7 +382,7 @@ React UI, the Cameroon photo catalogue, a geographic map, and the community loun
 - [Werkzeug password hashing](https://werkzeug.palletsprojects.com/en/stable/utils/#module-werkzeug.security)
 - [filelock documentation](https://py-filelock.readthedocs.io/en/latest/) and [HTTPX](https://www.python-httpx.org/)
 - [Docker Compose](https://docs.docker.com/compose/) and [volumes](https://docs.docker.com/engine/storage/volumes/)
-- [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/), [OpenStreetMap attribution](https://www.openstreetmap.org/copyright), and [Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/)
+- [Leaflet reference](https://leafletjs.com/reference.html), [OpenStreetMap attribution](https://www.openstreetmap.org/copyright), [tile usage policy](https://operations.osmfoundation.org/policies/tiles/), [Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/), and [OSRM routing API](https://project-osrm.org/docs/v5.24.0/api/#route-service)
 - [Pillow image processing](https://pillow.readthedocs.io/) and [PyAV media decoding](https://pyav.org/docs/stable/)
 
 The supplied image files are used locally. Verify image usage rights before publishing the application publicly.

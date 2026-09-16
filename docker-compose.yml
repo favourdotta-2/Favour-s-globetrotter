@@ -31,6 +31,8 @@ services:
     environment:
       GEOCODING_URL: "${GEOCODING_URL:-https://nominatim.openstreetmap.org/search}"
       GEOCODING_USER_AGENT: "${GEOCODING_USER_AGENT:-GlobeTrotterCameroon/1.0 (https://github.com/favourdotta-2/Favour-s-globetrotter)}"
+      ROUTING_URL: "${ROUTING_URL:-https://router.project-osrm.org/route/v1/driving}"
+      ROUTING_USER_AGENT: "${ROUTING_USER_AGENT:-GlobeTrotterCameroon/1.0 (https://github.com/favourdotta-2/Favour-s-globetrotter)}"
     volumes:
       - recommendations-data:/var/lib/globetrotter
 
@@ -88,8 +90,6 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
-      args:
-        VITE_MAP_STYLE_URL: "${VITE_MAP_STYLE_URL:-https://tiles.openfreemap.org/styles/liberty}"
     depends_on:
       gateway:
         condition: service_healthy

@@ -50,6 +50,18 @@ class AppRatingCreate(BaseModel):
     comment: str = Field(default="", max_length=1000)
 
 
+class MapCoordinates(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    lat: float = Field(strict=True, allow_inf_nan=False, ge=1.6, le=13.2)
+    lng: float = Field(strict=True, allow_inf_nan=False, ge=8.3, le=16.3)
+
+
+class MapRouteRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    origin: MapCoordinates
+    destination: MapCoordinates
+
+
 class AuthResponse(BaseModel):
     token: str
     user: PublicUser

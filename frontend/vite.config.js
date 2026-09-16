@@ -4,7 +4,6 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
-  worker: { format: "es" },
   publicDir: path.resolve(import.meta.dirname, "../images"),
   server: {
     port: 5173,
