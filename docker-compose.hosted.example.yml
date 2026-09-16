@@ -1,0 +1,4 @@
+services:
+  gateway:
+    environment:
+      FRONTEND_ORIGIN: "${FRONTEND_ORIGIN:?Set FRONTEND_ORIGIN to your public HTTPS origin}"

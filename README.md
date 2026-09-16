@@ -34,6 +34,12 @@ docker compose down
 
 Named volumes survive container restarts, rebuilds, and normal `down`. Do **not** add `-v` unless intentionally deleting your saved accounts, itineraries, and messages.
 
+### Local configuration and Git
+
+`.env` files, `frontend/nginx.conf`, `deploy/nginx/*.conf`, and `docker-compose.hosted.yml` are ignored by Git. Keep real server settings on the machine where they are used; example templates stay in the repository. Base Compose files and Dockerfiles remain versioned.
+
+The frontend image uses your local `frontend/nginx.conf` when present, otherwise it uses [frontend/nginx.conf.example](frontend/nginx.conf.example). A fresh clone therefore builds without a private Nginx configuration. To customize it, copy the example to `frontend/nginx.conf`, edit that ignored file, and rebuild the frontend. Existing local configurations are not overwritten.
+
 ## Host at https://dotta-globe.duckdns.org
 
 The public URL is **https://dotta-globe.duckdns.org**, not the raw IP or a URL with port 5173/8000. Its DNS A record must point to **109.199.120.38**. Remove or correct a stale AAAA record if the VPS is not serving the domain over IPv6.
@@ -62,6 +68,14 @@ if [ ! -f .env ]; then
     unset key
 fi
 
+if [ ! -f docker-compose.hosted.yml ]; then
+    cp docker-compose.hosted.example.yml docker-compose.hosted.yml
+fi
+```
+
+Before starting, ensure the VPS `.env` has `FRONTEND_ORIGIN=https://dotta-globe.duckdns.org`, including when reusing an existing `.env` from local development. The [hosted template](docker-compose.hosted.example.yml) reads this public origin from the environment. Keep the existing signing key unchanged.
+
+```bash
 docker compose -f docker-compose.yml -f docker-compose.hosted.yml up -d --build --wait --wait-timeout 180
 docker compose -f docker-compose.yml -f docker-compose.hosted.yml ps
 curl --fail http://127.0.0.1:5173/
@@ -72,7 +86,7 @@ Keep an existing valid `SECRET_KEY` unchanged; changing it logs everyone out. An
 
 ### 2. Connect the existing host Nginx
 
-Use [deploy/nginx/dotta-globe.duckdns.org.conf](deploy/nginx/dotta-globe.duckdns.org.conf) as the domain's reverse-proxy server block. This is an **HTTP bootstrap configuration**, not a replacement for a valid certificate. Back up the domain's current Nginx configuration first. If a server block already serves this domain, update that block instead of leaving duplicate `server_name` entries; preserve unrelated websites.
+Copy [deploy/nginx/site.conf.example](deploy/nginx/site.conf.example) to the ignored `deploy/nginx/dotta-globe.duckdns.org.conf` if that file does not already exist, then set its `server_name` to `dotta-globe.duckdns.org`. This is an **HTTP bootstrap configuration**, not a replacement for a valid certificate. Back up the domain's current Nginx configuration first. If a server block already serves this domain, update that block instead of leaving duplicate `server_name` entries; preserve unrelated websites.
 
 On a Debian/Ubuntu host, the usual locations are `/etc/nginx/sites-available/` and `/etc/nginx/sites-enabled/`. For a new site only:
 
@@ -287,15 +301,15 @@ frontend/
     pages/                     # Account, Discover, Destination, Itinerary, Map, Chat
     styles.css
   Dockerfile
-  nginx.conf
+  nginx.conf.example           # Default; optional local nginx.conf is ignored
   package.json
   package-lock.json
 images/
 scripts/Initialize-Local.ps1
 docker-compose.yml
 docker-compose.monolith.yml
-docker-compose.hosted.yml
-deploy/nginx/dotta-globe.duckdns.org.conf  # Host Nginx HTTP bootstrap; Certbot enables HTTPS
+docker-compose.hosted.example.yml
+deploy/nginx/site.conf.example  # Copy to an ignored .conf file; Certbot enables HTTPS
 ```
 
 The original root `app/`, `Dockerfile`, and `requirements.txt` are retained as the historical Flask starter. They are **not used** by either current Compose setup; use the frontend/backend instructions here.

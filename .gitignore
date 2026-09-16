@@ -22,6 +22,11 @@ build/
 .env.*
 !.env.example
 
+# Local/server-specific deployment configuration; keep example templates in Git.
+/frontend/nginx.conf
+/deploy/nginx/*.conf
+/docker-compose.hosted.yml
+
 # Frontend
 node_modules/
 
