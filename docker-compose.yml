@@ -28,6 +28,11 @@ services:
       dockerfile: backend/Dockerfile
       args:
         SERVICE_NAME: recommendation
+    environment:
+      GEOCODING_URL: "${GEOCODING_URL:-https://nominatim.openstreetmap.org/search}"
+      GEOCODING_USER_AGENT: "${GEOCODING_USER_AGENT:-GlobeTrotterCameroon/1.0 (https://github.com/favourdotta-2/Favour-s-globetrotter)}"
+    volumes:
+      - recommendations-data:/var/lib/globetrotter
 
   itinerary:
     <<: *api
@@ -83,6 +88,8 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      args:
+        VITE_MAP_STYLE_URL: "${VITE_MAP_STYLE_URL:-https://tiles.openfreemap.org/styles/liberty}"
     depends_on:
       gateway:
         condition: service_healthy
@@ -98,3 +105,4 @@ volumes:
   users-data:
   itineraries-data:
   chat-data:
+  recommendations-data:

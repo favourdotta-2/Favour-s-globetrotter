@@ -30,6 +30,10 @@ data/*.json
 backend/data/users.json
 backend/data/itineraries.json
 backend/data/chat_messages.json
+backend/data/chat_media.json
+backend/data/reviews.json
+backend/data/app_ratings.json
+backend/data/uploads/
 backend/data/*.lock
 backend/data/*.tmp
 backend/app/data/

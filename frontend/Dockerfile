@@ -5,6 +5,7 @@ COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend ./
 COPY images ../images
+ARG VITE_MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
 RUN npm run build
 
 FROM nginx:stable-alpine

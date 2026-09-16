@@ -1,11 +1,14 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { request, TOKEN_KEY } from "./api";
-import { Feedback, Icon } from "./components";
+import { Avatar, Feedback, Icon } from "./components";
 import { AuthPage, ProfilePage, SharedPage } from "./pages/Account";
 import DiscoverPage from "./pages/Discover";
 import ItineraryPage, { emptyDraft } from "./pages/Itinerary";
-import MapPage from "./pages/Map";
 import ChatPage from "./pages/Chat";
+import DestinationPage from "./pages/Destination";
+import "./social.css";
+
+const MapPage = lazy(() => import("./pages/Map"));
 
 const navigation = [
   ["discover", "Discover", "compass"],
@@ -48,17 +51,33 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!localStorage.getItem(TOKEN_KEY)) return;
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return;
     const controller = new AbortController();
     setChecking(true);
     setSessionError("");
     request("/auth/me", { signal: controller.signal }).then((profile) => {
-      if (!controller.signal.aborted) setUser(profile);
+      if (!controller.signal.aborted && localStorage.getItem(TOKEN_KEY) === token) setUser(profile);
     }).catch((error) => {
-      if (!controller.signal.aborted && localStorage.getItem(TOKEN_KEY)) setSessionError(error.message);
+      if (!controller.signal.aborted && localStorage.getItem(TOKEN_KEY) === token) setSessionError(error.message);
     }).finally(() => { if (!controller.signal.aborted) setChecking(false); });
     return () => controller.abort();
   }, [sessionVersion]);
+
+  useEffect(() => {
+    const changed = (event) => {
+      if (event.key === "globetrotter_profile_version" && localStorage.getItem(TOKEN_KEY)) {
+        setSessionVersion((version) => version + 1);
+      }
+    };
+    window.addEventListener("storage", changed);
+    return () => window.removeEventListener("storage", changed);
+  }, []);
+
+  function updateUser(profile) {
+    setUser(profile);
+    localStorage.setItem("globetrotter_profile_version", String(Date.now()));
+  }
 
   function login(auth) {
     localStorage.setItem(TOKEN_KEY, auth.token);
@@ -76,9 +95,10 @@ export default function App() {
   }
 
   if (route.startsWith("shared/")) return <SharedPage shareId={route.slice(7)} navigate={navigate} />;
-  if (checking) return <div className="session-screen"><Icon size={44} /><Feedback loading /></div>;
-  if (sessionError) return <div className="session-screen"><Feedback error={sessionError} retry={() => setSessionVersion((v) => v + 1)} /><button className="secondary" onClick={() => logout()}>Return to login</button></div>;
+  if (checking && !user) return <div className="session-screen"><Icon size={44} /><Feedback loading /></div>;
+  if (sessionError && !user) return <div className="session-screen"><Feedback error={sessionError} retry={() => setSessionVersion((v) => v + 1)} /><button className="secondary" onClick={() => logout()}>Return to login</button></div>;
   if (!user) return <AuthPage mode={route === "signup" ? "signup" : "login"} navigate={navigate} onSuccess={login} notice={notice} />;
+  const destinationId = route.startsWith("destination/") ? route.slice(12) : null;
   const active = navigation.some(([id]) => id === route) ? route : "discover";
 
   return <div className="app-shell">
@@ -90,16 +110,18 @@ export default function App() {
           {id === "itinerary" && draft.destination_ids.length > 0 && <span className="count">{draft.destination_ids.length}</span>}
         </a>)}</nav>
       <div className="sidebar-note"><Icon name="pin" /><h3>Closer to home.<br />Further from ordinary.</h3><p>Rediscover the beauty of Cameroon, one trip at a time.</p><a href="#/map">Find your way <Icon name="arrow" size={16} /></a></div>
-      <div className="sidebar-user"><span className="avatar">{(user.full_name || user.username)[0].toUpperCase()}</span><div><strong>{user.full_name || user.username}</strong><small>Curious traveler</small></div><button className="text-button" onClick={() => logout()}>Log out</button></div>
+      <div className="sidebar-user"><Avatar user={user} /><div><strong>{user.full_name || user.username}</strong><small>Curious traveler</small></div><button className="text-button" onClick={() => logout()}>Log out</button></div>
     </aside>
     <main className="main-content">
       <header className="topbar"><span>Cameroon, through a different lens</span><span className="edition"><span className="status-dot" /> The Cameroon collection</span></header>
+      {sessionError && <Feedback error={sessionError} retry={() => setSessionVersion((v) => v + 1)} />}
       {notice && <div className="notice" role="status">{notice}<button aria-label="Dismiss notification" onClick={() => setNotice("")}>&times;</button></div>}
-      {active === "discover" && <DiscoverPage user={user} draft={draft} onAdd={addDestination} />}
+      {destinationId && <DestinationPage key={destinationId} destinationId={destinationId} user={user} draft={draft} onAdd={addDestination} />}
+      {active === "discover" && !destinationId && <DiscoverPage user={user} draft={draft} onAdd={addDestination} />}
       {active === "itinerary" && <ItineraryPage draft={draft} setDraft={setDraft} navigate={navigate} />}
-      {active === "map" && <MapPage draft={draft} onAdd={addDestination} />}
+      {active === "map" && <Suspense fallback={<Feedback loading />}><MapPage draft={draft} onAdd={addDestination} /></Suspense>}
       {active === "chat" && <ChatPage user={user} />}
-      {active === "profile" && <ProfilePage user={user} setUser={setUser} />}
+      {active === "profile" && <ProfilePage user={user} setUser={updateUser} onLogout={() => logout()} />}
       <footer>Made for the journey, not just the destination. <span>GlobeTrotter / Cameroon</span></footer>
     </main>
   </div>;

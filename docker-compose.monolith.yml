@@ -7,6 +7,8 @@ services:
         SERVICE_NAME: monolith
     environment:
       SECRET_KEY: "${SECRET_KEY:?Set SECRET_KEY to a random value of at least 32 characters}"
+      GEOCODING_URL: "${GEOCODING_URL:-https://nominatim.openstreetmap.org/search}"
+      GEOCODING_USER_AGENT: "${GEOCODING_USER_AGENT:-GlobeTrotterCameroon/1.0 (https://github.com/favourdotta-2/Favour-s-globetrotter)}"
     volumes:
       - monolith-data:/var/lib/globetrotter
     ports:
@@ -20,6 +22,8 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      args:
+        VITE_MAP_STYLE_URL: "${VITE_MAP_STYLE_URL:-https://tiles.openfreemap.org/styles/liberty}"
     depends_on:
       gateway:
         condition: service_healthy

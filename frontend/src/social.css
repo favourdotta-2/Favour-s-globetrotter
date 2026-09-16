@@ -1,0 +1,90 @@
+.card-photo { display: block; }
+.card-photo:focus-visible { outline-offset: -4px; }
+.card-body h3 a:hover, .stops h3 a:hover { text-decoration: underline; }
+.avatar { overflow: hidden; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.detail-back { margin-bottom: 24px; }
+.destination-hero { position: relative; border-radius: 16px; overflow: hidden; min-height: 370px; display: flex; align-items: flex-end; }
+.destination-hero > img { position: absolute; width: 100%; height: 100%; inset: 0; object-fit: cover; }
+.destination-hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(transparent, #122f27e8); }
+.destination-hero-copy { position: relative; z-index: 1; padding: 34px; color: #fff; }
+.destination-hero-copy h1 { font: clamp(32px,4vw,53px)/1.12 Georgia,serif; letter-spacing: -1.4px; }
+.destination-hero-copy .eyebrow { color: #e9c391; }
+.destination-hero-copy > p:last-child { display: flex; align-items: center; gap: 7px; margin: 17px 0 0; font-size: 13px; }
+.destination-overview { display: grid; grid-template-columns: 1.5fr 1fr; gap: 36px; padding: 35px 0; align-items: start; }
+.destination-overview > div > p:not(.eyebrow) { color: var(--muted); font-size: 14px; }
+.destination-plan { display: grid; gap: 16px; }
+.destination-plan .eyebrow, .destination-plan p { margin: 0; }
+.place-budget { color: var(--muted); font-size: 13px; }
+.place-budget strong { color: var(--ink); font: 35px Georgia,serif; }
+.destination-plan small { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.destination-rating { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 26px; font-size: 13px; }
+.destination-rating > span:last-child { color: var(--muted); }
+.rating-display { white-space: nowrap; display: inline-flex; gap: 2px; color: #d7dfd3; font-size: 20px; }
+.rating-display .filled { color: #c78535; }
+.star-rating legend { font-size: 13px; font-weight: 600; margin-bottom: 9px; }
+.star-rating > div { display: flex; gap: 8px; }
+.star-rating label { position: relative; color: #ccd4c6; cursor: pointer; display: inline-flex; font-size: 34px; }
+.star-rating label.filled { color: #c78535; }
+.star-rating label:hover { color: #af6d29; }
+.star-rating input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.star-rating label:focus-within { outline: 2px solid var(--green); outline-offset: 2px; border-radius: 6px; }
+.star-rating small { font-size: 11px; color: var(--muted); }
+.star-rating:disabled { opacity: .65; }
+.reviews-layout { display: grid; grid-template-columns: 1.15fr 1fr; gap: 30px; align-items: start; padding: 15px 0 25px; border-top: 1px solid var(--line); }
+.review-list { display: grid; gap: 18px; }
+.review-card { border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 20px; }
+.review-heading { display: flex; align-items: center; gap: 10px; }
+.review-heading > div { min-width: 0; flex: 1; }
+.review-heading strong { display: block; font-size: 12px; overflow-wrap: anywhere; }
+.review-heading small { display: block; font-size: 10px; color: var(--muted); margin-top: 5px; }
+.review-heading .rating-display { font-size: 16px; gap: 0; }
+.review-card .preserve-text { margin: 18px 0 0; font-size: 13px; }
+.review-editor { position: sticky; top: 20px; }
+.review-editor .star-rating { gap: 9px !important; }
+.review-editor small { font-size: 10px; }
+.app-rating-panel { margin-top: 30px; max-width: 680px; }
+.app-rating-panel > .eyebrow { margin: 0; }
+.profile-body .data-note { font-size: 10px; margin-bottom: 15px; padding-top: 14px; }
+.chat-compose.rich-compose { display: flex; flex-direction: column; gap: 12px; }
+.chat-compose.rich-compose .chat-tools { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; }
+.chat-tools .secondary { padding: 8px 11px; font-size: 11px; }
+.chat-compose.rich-compose .emoji-picker { display: grid; grid-template-columns: repeat(6,1fr); background: #eff4e8; padding: 9px; border-radius: 9px; gap: 3px; }
+.emoji-picker button { padding: 8px; font-size: 25px; background: transparent; border: 0; border-radius: 6px; }
+.emoji-picker button:hover { background: #dfe8d2; }
+.chat-compose.rich-compose .sticker-picker { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); padding: 8px; background: #eff4e8; border-radius: 9px; gap: 4px; }
+.sticker-picker button { border: 1px solid transparent; background: transparent; border-radius: 8px; padding: 0; }
+.sticker-picker button:hover { border-color: var(--green); }
+.sticker-picker img { width: 100%; }
+.chat-sticker { width: 170px; max-width: 100%; height: auto; }
+.chat-compose.rich-compose .attachment-preview { background: #f4f6ed; display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; padding: 10px; gap: 8px; border-radius: 8px; }
+.attachment-preview > .chat-sticker { width: 120px; }
+.attachment-preview img, .attachment-preview video { max-width: 150px; max-height: 100px; border-radius: 7px; }
+.attachment-preview small { max-width: 270px; overflow-wrap: anywhere; }
+.chat-compose.rich-compose .compose-row { display: flex; flex-direction: row; gap: 10px; }
+.chat-compose.rich-compose > small { margin: 0; }
+.chat-attachment { width: 275px; max-width: 100%; min-height: 50px; margin: 10px 0; }
+.chat-attachment > img, .chat-attachment > video { width: 100%; max-height: 270px; object-fit: contain; border-radius: 10px; background: #e7ebdf; }
+.chat-attachment > small { display: block; font-size: 10px; margin-top: 8px; overflow-wrap: anywhere; color: var(--muted); }
+.chat-attachment .feedback { font-size: 11px; }
+.message .chat-attachment .secondary { font-size: 11px; padding: 10px 14px; }
+.message-meta strong { max-width: 200px; }
+@media (max-width: 1100px) {
+  .destination-overview, .reviews-layout { grid-template-columns: 1fr; }
+  .review-editor { position: static; }
+  .destination-plan { grid-template-columns: 1fr 1fr; }
+  .destination-plan .eyebrow, .destination-plan > small { grid-column: 1 / -1; }
+  .destination-plan .place-budget { grid-column: 1 / -1; }
+}
+@media (max-width: 700px) {
+  .destination-hero { min-height: 300px; }
+  .destination-hero-copy { padding: 23px; }
+  .destination-overview { padding: 25px 0; gap: 24px; }
+  .destination-plan { grid-template-columns: 1fr; }
+  .review-heading { flex-wrap: wrap; }
+  .review-heading .rating-display { width: 100%; }
+  .chat-compose.rich-compose .sticker-picker { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .chat-compose.rich-compose .compose-row { flex-direction: column; }
+  .chat-attachment { width: 220px; }
+  .star-rating label { font-size: 32px; }
+}

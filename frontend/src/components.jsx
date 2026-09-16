@@ -1,3 +1,5 @@
+import { useEffect, useId, useState } from "react";
+
 export const preferences = ["culture", "food", "nature", "adventure", "history", "nightlife", "family"];
 
 const shapes = {
@@ -35,12 +37,37 @@ export function PageHeading({ eyebrow, title, children }) {
 
 export function DestinationCard({ destination, onAdd, selected }) {
   return <article className="destination-card">
-    <div className="card-photo"><img src={destination.image} alt={destination.name} loading="lazy" /><span>{destination.tags[0]}</span></div>
+    <a className="card-photo" href={`#/destination/${destination.id}`} aria-label={`View ${destination.name}`}><img src={destination.image} alt={destination.name} loading="lazy" /><span>{destination.tags[0]}</span></a>
     <div className="card-body"><p className="location"><Icon name="pin" size={14} /> {destination.city}, Cameroon</p>
-      <h3>{destination.name}</h3><p className="description">{destination.description}</p>
+      <h3><a href={`#/destination/${destination.id}`}>{destination.name}</a></h3><p className="description">{destination.description}</p>
       <div className="card-bottom"><span><strong>${destination.avg_cost_per_day}</strong><small> / day, estimate</small></span>
         <button className={`round-button ${selected ? "selected" : ""}`} aria-label={`${selected ? "Added" : "Add"} ${destination.name} to itinerary`}
           disabled={selected} onClick={() => onAdd(destination)}>{selected ? "\u2713" : "+"}</button></div>
     </div>
   </article>;
+}
+
+export function Avatar({ user, className = "" }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [user?.avatar_url]);
+  const name = user?.full_name || user?.username || "Traveler";
+  return <span className={`avatar ${className}`} title={failed ? `${name}: photo could not load` : name}>
+    {user?.avatar_url && !failed
+      ? <img src={user.avatar_url} alt={`${name}'s profile photo`} onError={() => setFailed(true)} />
+      : name[0].toUpperCase()}
+  </span>;
+}
+
+export function StarRating({ value = 0, onChange, label = "Rating", disabled = false }) {
+  const id = useId();
+  if (!onChange) return <span className="rating-display" aria-label={`${value || 0} out of 5 stars`}>
+    {[1, 2, 3, 4, 5].map((star) => <span aria-hidden="true" className={star <= Math.round(value) ? "filled" : ""} key={star}>{"\u2605"}</span>)}
+  </span>;
+  return <fieldset className="star-rating" disabled={disabled}><legend>{label}</legend>
+    <div>{[1, 2, 3, 4, 5].map((star) => <label className={star <= value ? "filled" : ""} key={star}>
+      <input type="radio" name={id} value={star} checked={value === star} onChange={() => onChange(star)} aria-label={`${star} ${star === 1 ? "star" : "stars"}`} />
+      <span aria-hidden="true">{"\u2605"}</span>
+    </label>)}</div>
+    <small>{value ? `${value} / 5` : "Choose 1 to 5 stars"}</small>
+  </fieldset>;
 }

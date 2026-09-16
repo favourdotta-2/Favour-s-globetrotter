@@ -19,6 +19,7 @@ def public_user(user: dict[str, Any]) -> dict[str, Any]:
         "bio": user.get("bio", ""),
         "home_city": user.get("home_city", ""),
         "created_at": user.get("created_at", ""),
+        "avatar_url": user.get("avatar_url"),
     }
 
 

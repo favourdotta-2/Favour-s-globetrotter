@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     recommendation_service_url: str = "http://recommendation:8000"
     chat_service_url: str = "http://chat:8000"
     request_timeout_seconds: float = Field(default=5.0, gt=0, le=30)
+    geocoding_url: str = "https://nominatim.openstreetmap.org/search"
+    geocoding_user_agent: str = (
+        "GlobeTrotterCameroon/1.0 (https://github.com/favourdotta-2/Favour-s-globetrotter)"
+    )
 
 
 @lru_cache

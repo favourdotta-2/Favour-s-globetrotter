@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import Settings, get_settings
+from app.core.body_limit import BodyLimitMiddleware
 from app.core.service_client import service_get
 from app.repositories.json_store import JsonStore, StorageError
 from app.routers import auth, chat, destinations, gateway, itineraries, profile
@@ -29,6 +30,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(title=f"GlobeTrotter - {settings.service_name}", lifespan=lifespan)
     app.state.settings = settings
+    app.add_middleware(BodyLimitMiddleware)
     app.dependency_overrides[get_settings] = lambda: settings
     app.add_middleware(
         CORSMiddleware,
@@ -68,9 +70,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def ready() -> dict[str, str]:
         store = JsonStore(settings.data_dir, settings.catalog_path)
         collections = {
-            "monolith": ["users", "itineraries", "chat_messages", "destinations"],
-            "user": ["users"], "itinerary": ["itineraries"],
-            "recommendation": ["destinations"], "chat": ["chat_messages"], "gateway": [],
+            "monolith": ["users", "itineraries", "chat_messages", "destinations", "reviews", "app_ratings", "chat_media"],
+            "user": ["users", "app_ratings"], "itinerary": ["itineraries"],
+            "recommendation": ["destinations", "reviews"], "chat": ["chat_messages", "chat_media"], "gateway": [],
         }
         for collection in collections[settings.service_name]:
             store.read(collection)

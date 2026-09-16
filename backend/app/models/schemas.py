@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
 
@@ -29,6 +29,25 @@ class PublicUser(BaseModel):
     bio: str = ""
     home_city: str = ""
     created_at: str = ""
+    avatar_url: str | None = None
+
+
+class PublicAuthor(BaseModel):
+    username: str
+    full_name: str = ""
+    avatar_url: str | None = None
+
+
+class ReviewCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    rating: int = Field(ge=1, le=5, strict=True)
+    comment: str = Field(min_length=1, max_length=2000)
+
+
+class AppRatingCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    rating: int = Field(ge=1, le=5, strict=True)
+    comment: str = Field(default="", max_length=1000)
 
 
 class AuthResponse(BaseModel):
@@ -70,7 +89,17 @@ class ItineraryCreate(BaseModel):
 
 class ChatMessageCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
-    text: str = Field(min_length=1, max_length=500)
+    text: str = Field(default="", max_length=500)
+    sticker: Literal["hello", "adventure", "love-cameroon", "lets-go"] | None = None
+    media_id: str | None = Field(default=None, pattern=r"^[a-f0-9]{32}$")
+
+    @model_validator(mode="after")
+    def validate_content(self) -> Self:
+        if not self.text and not self.sticker and not self.media_id:
+            raise ValueError("Write a message or choose a sticker, photo, or video")
+        if self.sticker and self.media_id:
+            raise ValueError("Send one attachment per message")
+        return self
 
 
 class ChatMessage(BaseModel):

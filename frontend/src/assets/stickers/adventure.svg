@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 180">
+  <rect x="8" y="8" width="204" height="164" rx="38" fill="#f6edce" stroke="#fff" stroke-width="10"/>
+  <circle cx="147" cy="53" r="22" fill="#db8551"/>
+  <path d="m30 120 60-80 55 80Zm78 0 39-53 44 53Z" fill="#38624b" stroke="#244e40" stroke-width="3" stroke-linejoin="round"/>
+  <path d="m71 65 19-25 18 27-16-7-10 10Z" fill="#f8fcf0"/>
+  <text x="110" y="149" text-anchor="middle" font-family="Arial,sans-serif" font-size="21" font-weight="bold" fill="#244e40">ADVENTURE!</text>
+</svg>

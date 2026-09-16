@@ -25,8 +25,8 @@ export default function DiscoverPage({ user, draft, onAdd }) {
       {catalogue.data.length === 0 && <div className="empty-state"><Icon name="search" size={36} /><h3>No places found just yet.</h3><p>Try another search or clear your filters.</p><button className="secondary" onClick={() => { setSearch(""); setQuery(""); setTag(""); setMaxCost(""); }}>Clear filters</button></div>}</>}
     <div className="section-title"><div><p className="eyebrow">A LITTLE MORE YOU</p><h2>Picked for your kind of adventure.</h2></div><a className="text-button" href="#/profile">Refine your interests <Icon name="arrow" size={16} /></a></div>
     <Feedback loading={recommendations.loading} error={recommendations.error} retry={recommendations.reload} />
-    {!recommendations.error && <div className="recommendation-grid">{recommendations.data?.map((destination) => <button className="recommendation" key={destination.id} onClick={() => onAdd(destination)} disabled={selected(destination.id)}>
-      <img src={destination.image} alt="" /><div><small>{destination.city}</small><h3>{destination.name}</h3><span>{selected(destination.id) ? "In your draft" : "Add to your journey"} <Icon name="arrow" size={16} /></span></div></button>)}</div>}
+    {!recommendations.error && <div className="recommendation-grid">{recommendations.data?.map((destination) => <a className="recommendation" key={destination.id} href={`#/destination/${destination.id}`}>
+      <img src={destination.image} alt="" /><div><small>{destination.city}</small><h3>{destination.name}</h3><span>Discover this place <Icon name="arrow" size={16} /></span></div></a>)}</div>}
     <p className="data-note">Planning inspiration, not live booking information. Budgets are illustrative USD/day and coordinates are approximate. Check local access and prices before traveling.</p>
   </section>;
 }

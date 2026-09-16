@@ -26,7 +26,9 @@ class JsonStore:
     def _path(self, collection: str) -> Path:
         if collection == "destinations":
             return self.catalog_path
-        if collection not in {"users", "itineraries", "chat_messages"}:
+        if collection not in {
+            "users", "itineraries", "chat_messages", "chat_media", "reviews", "app_ratings"
+        }:
             raise ValueError("Unknown collection")
         return self.data_dir / f"{collection}.json"
 

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 180">
+  <rect x="8" y="8" width="204" height="164" rx="38" fill="#f4e3d7" stroke="#fff" stroke-width="10"/>
+  <path d="M110 119 65 78c-33-35 21-72 45-32 24-40 78-3 45 32Z" fill="#cb554b" stroke="#943d3f" stroke-width="3"/>
+  <path d="m110 60 6 17h18l-15 11 6 18-15-11-15 11 6-18-15-11h18Z" fill="#f5ce61"/>
+  <text x="110" y="148" text-anchor="middle" font-family="Arial,sans-serif" font-size="19" font-weight="bold" fill="#244e40">LOVE CAMEROON</text>
+</svg>

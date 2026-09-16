@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 180">
+  <rect x="8" y="8" width="204" height="164" rx="38" fill="#dff2df" stroke="#fff" stroke-width="10"/>
+  <circle cx="110" cy="73" r="39" fill="#f6cc64" stroke="#244e40" stroke-width="3"/>
+  <path d="M92 72h2m31 0h2m-34 17q17 17 34 0" fill="none" stroke="#244e40" stroke-width="5" stroke-linecap="round"/>
+  <path d="m45 43-9-7m16-7-3-12m123 26 10-7m-16-7 3-12" stroke="#bd6338" stroke-width="5" stroke-linecap="round"/>
+  <text x="110" y="144" text-anchor="middle" font-family="Arial,sans-serif" font-size="21" font-weight="bold" fill="#244e40">HEY, TRAVELER!</text>
+</svg>

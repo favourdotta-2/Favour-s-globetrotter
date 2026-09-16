@@ -1,0 +1,31 @@
+.cameroon-search { display: flex; gap: 12px; align-items: flex-end; margin: 25px 0 12px; }
+.cameroon-search > label { flex: 1; }
+.map-provider-note { color: var(--muted); font-size: 10px; line-height: 1.7; }
+.map-provider-note a, .cameroon-map-page .data-note a { text-decoration: underline; }
+.map-view-toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 20px 0 12px; }
+.map-view-toolbar small { font-size: 10px; color: var(--muted); }
+.maplibre-container { min-height: 540px; }
+.cameroon-marker { width: 30px; height: 30px; border-radius: 50%; border: 3px solid #fff; background: #244e40; color: #fff; box-shadow: 0 2px 8px #0004; font-size: 15px; cursor: pointer; }
+.cameroon-marker.search-marker { background: #bd6338; }
+.cameroon-marker:focus-visible { outline: 3px solid #d89d46; outline-offset: 3px; }
+.cameroon-map-page .map-list > h3 { font-size: 13px; padding: 6px 9px; margin: 0; }
+.map-place-row { display: flex; gap: 4px; align-items: center; }
+.map-place-row > a { flex: 0 0 49px; }
+.map-place-row > button { flex: 1; min-width: 0; }
+.external-results { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin: 18px 0; }
+.external-results .section-title h2 { font-size: 20px; }
+.external-results > div:last-child { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; max-height: 320px; overflow: auto; }
+.external-results > div:last-child > button { display: flex; align-items: center; text-align: left; gap: 10px; padding: 13px; background: #f6f8f0; border: 1px solid #e2e8da; border-radius: 8px; color: var(--green); }
+.external-results > div:last-child > button.selected { background: #e8efdf; border-color: #789166; }
+.external-results button > span { min-width: 0; flex: 1; }
+.external-results strong { display: block; font-size: 12px; margin-bottom: 6px; }
+.external-results small { display: block; color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
+.external-place-note { max-width: 230px; color: var(--muted); font-size: 11px; }
+.cameroon-map-page .map-selection .form-stack { flex: 0 1 auto; }
+@media (max-width: 700px) {
+  .cameroon-search { flex-direction: column; align-items: stretch; }
+  .external-results > div:last-child { grid-template-columns: 1fr; }
+  .maplibre-container { min-height: 400px; }
+  .map-view-toolbar .secondary { padding: 10px 13px; font-size: 11px; }
+  .external-results { padding: 15px; }
+}

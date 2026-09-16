@@ -7,3 +7,6 @@ pydantic-settings==2.15.0
 python-dotenv==1.2.3
 httpx==0.28.1
 filelock==3.32.6
+python-multipart==0.0.32
+Pillow==12.3.0
+av==18.1.0

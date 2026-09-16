@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 180">
+  <rect x="8" y="8" width="204" height="164" rx="38" fill="#deebe7" stroke="#fff" stroke-width="10"/>
+  <rect x="59" y="53" width="101" height="67" rx="12" fill="#d79757" stroke="#244e40" stroke-width="4"/>
+  <path d="M94 53V39h30v14m-46 0v67m64-67v67" fill="none" stroke="#244e40" stroke-width="5"/>
+  <circle cx="105" cy="84" r="9" fill="#f3ecba"/>
+  <path d="M28 78h19m-16 18h15m128-48 8-13m2 35 15-5" stroke="#bd6338" stroke-width="5" stroke-linecap="round"/>
+  <text x="110" y="148" text-anchor="middle" font-family="Arial,sans-serif" font-size="23" font-weight="bold" fill="#244e40">LET'S GO!</text>
+</svg>

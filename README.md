@@ -39,18 +39,55 @@ Named volumes survive container restarts, rebuilds, and normal `down`. Do **not*
 | Page | Working features |
 | --- | --- |
 | Login / signup | Password hashing, JWT sessions, persisted login, session-expiry feedback, travel interests |
-| Discover | Local image catalogue, text/category/budget filters, empty/loading/error states, personalized recommendations |
+| Discover | Local image catalogue, text/category/budget filters, personalized recommendations; click a destination photo or title to open its detail page |
+| Destination details | Full place photo/description, average star rating, traveler comments, and your editable/deletable review |
 | My itineraries | Multi-destination drafts that survive page navigation, ordered stops, optional dates, notes, create/edit/delete |
 | Shared itinerary | Explicit opt-in link sharing, public read-only view, revocable links; other users cannot edit your itinerary |
-| Explore map | Leaflet/OpenStreetMap map, coordinates-based markers, clickable destination list, add-to-itinerary action |
-| My profile | Name, city, bio, and interests; preference changes affect recommendations |
-| Travel lounge | One authenticated community chat for everyone, persisted messages, automatic polling every five seconds |
+| Explore map | MapLibre/OpenStreetMap-based tilted map, catalogue markers and Cameroon-wide search for places outside the app catalogue |
+| My profile | Name, city, bio, interests, profile-photo upload, an app-rating form, and logout |
+| Travel lounge | Authenticated community messages, emoji and sticker pickers, photos/videos below 5 MB, and polling every five seconds |
 
 All photography is served from the supplied [images](images/) directory. Vite copies these assets into the production build; Docker preserves the same paths.
 
-**Catalogue limitations:** the destinations are curated examples, not live commercial listings. Coordinates are approximate. Daily budgets are illustrative **USD**, not verified entry fees or booking quotes. Check local prices, routes, opening hours, and access before travel. Map tiles require internet access, display OpenStreetMap attribution, and show a warning if loading fails. The geographic markers are not randomly positioned.
+**Catalogue limitations:** the destinations are curated examples, not live commercial listings. Coordinates are approximate. Daily budgets are illustrative **USD**, not verified entry fees or booking quotes. Check local prices, routes, opening hours, and access before travel. Map tiles and external place search require internet access and display provider attribution. The geographic markers are not randomly positioned. Search coverage is limited to places indexed by OpenStreetMap; it cannot guarantee that every real-world place is indexed.
 
-Chat shows the latest 100 messages and is REST polling, not WebSockets. Messages are visible to every signed-in user. There are no invented online-user counts. Avoid posting private contact information, credentials, or sensitive travel plans. Shared itinerary links reveal the trip's notes and stops to anyone with the link; sharing is disabled until the owner enables it.
+Chat shows the latest 100 messages and is REST polling, not WebSockets. Messages and their attachments are visible to every signed-in user. There are no invented online-user counts. Avoid posting private contact information, credentials, or sensitive travel plans. Shared itinerary links reveal the trip's notes and stops to anyone with the link; sharing is disabled until the owner enables it.
+
+### Destination reviews and app feedback
+
+Click photos/titles in Discover, recommendations, saved-trip covers, or the map's local place details to open `#/destination/{id}`. A signed-in traveler can leave one 1-5 star rating with a comment per destination, then update or delete their own review. Ratings must be integers; the displayed average is calculated from actual saved reviews, not seeded numbers. Up to 100 recent comments are shown, while all saved ratings count toward the average. Your own review remains editable even when it falls outside those 100.
+
+The profile's **Rate us** button opens a separate GlobeTrotter feedback form. It stores one editable app rating per account; it does not publish to an external app store.
+
+### Profile photos and chat media
+
+- Use **Update profile image** on your profile. Photos update in your profile and sidebar immediately, and the current author photo is used in chat and reviews, including older posts. Other clients receive current photos when they refresh/poll. Profile changes also notify other tabs using the same browser session.
+- Profile photos are visible to other travelers and are served through public, randomly named image URLs. They are decoded, orientation-corrected, cropped to 512x512, and re-encoded to WebP without original metadata.
+- Use **Emojis**, **Stickers**, or **Photo or video** in chat. An attachment may be sent by itself or with a caption. The included travel stickers are local SVG illustrations, not an external sticker service.
+- Each original file must be **strictly smaller than 5,000,000 bytes** (decimal 5 MB). A file exactly 5 MB is rejected. The browser and backend both enforce this rule; multipart request envelopes are capped separately at 6 MB.
+- Photos: JPEG, PNG, WebP, GIF, up to 16 megapixels. Uploaded images are decoded and re-encoded to WebP with a maximum 2048x2048 bounding box. Animated images use the first frame.
+- Videos: H.264 MP4 or VP8/VP9 WebM, up to 16 megapixels per frame. File signatures, the actual codec, and a decoded frame are checked with PyAV; filenames and browser MIME declarations alone are not trusted. The video is not transcoded. Use browser-compatible audio codecs for sound.
+- Chat files require authentication. Image elements/video players use authenticated fetches and temporary browser blob URLs; bearer tokens are never placed in media URLs. Video loading is user-triggered, with normal playback controls. Blob URLs are revoked when a message view is released.
+- JSON files remain the database for accounts, reviews, ratings, messages, and attachment metadata. Binary images/videos are stored alongside them under the owning service's `uploads/` directory, not as base64 strings inside JSON.
+- Existing accounts without photos and existing text-only messages continue to work. No reset or manual data migration is required.
+
+### Cameroon map and external search
+
+The map uses [MapLibre GL JS](https://maplibre.org/) with the no-key [OpenFreeMap Liberty style](https://openfreemap.org/quick_start/), based on OpenStreetMap data. Switch between a tilted 3D perspective and 2D; drag to pan, right-drag to rotate/tilt, or use the zoom/compass controls. Building extrusions appear at street-level zoom where building footprints are available; heights may be approximate. This is not satellite imagery, a terrain survey, or a routing/navigation service.
+
+Map navigation is locked to Cameroon's bounding area (8.3-16.3 degrees east, 1.6-13.2 degrees north). The initial view and **Show Cameroon** button use these same bounds; panning and zooming out cannot move the map away to another part of the world. This is a rectangular navigation restriction, not an exact country-border mask, so neighboring areas may still appear near the edges.
+
+**The public [Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/) applies to search.** This provider was explicitly selected for the small local project. The operator is responsible for ongoing compliance. Searches are sent only on form submission, not autocomplete. A single backend search process:
+
+- Sends an identifying User-Agent and requests at most ten results with `countrycodes=cm`.
+- Verifies each returned country and finite Cameroon coordinates.
+- Shares a bounded, 256-query, 24-hour in-memory cache across users (including empty results).
+- Allows no more than one external request per second; concurrent/too-frequent uncached searches receive an explicit retry message.
+- Reports provider/network failures rather than pretending there are no matches.
+
+Do not enter personal, private, or confidential information in searches. Only indexed places can be found; alternative spellings or nearby towns may help. Search results outside the curated catalogue can be viewed on the map but cannot be added as invalid catalogue IDs to itineraries. Search and catalogue lists remain available when WebGL is unsupported.
+
+Keep exactly **one search worker/instance** with the public provider; do not run the monolith and microservice search processes together or scale them independently against it. A larger deployment needs a suitable commercial/self-hosted provider and a shared rate limiter/cache. Set `GEOCODING_URL` and optionally `GEOCODING_USER_AGENT` in the root `.env`, then recreate the recommendation container (or monolith) to switch a Nominatim-compatible provider without changing source code. `VITE_MAP_STYLE_URL` selects a different MapLibre style at frontend build time; rebuild the frontend after changing it.
 
 ## Architecture
 
@@ -105,14 +142,14 @@ Recommendation API -> User API + Itinerary API for personalization
 
 | Container | Responsibilities | Private data |
 | --- | --- | --- |
-| `user` | Registration, login, JWT validation, profile/preferences | `users-data` volume |
+| `user` | Registration, login, JWT validation, profile/preferences, avatars, app feedback | `users-data` volume |
 | `itinerary` | Itinerary CRUD, ownership, sharing, aggregate popularity counts | `itineraries-data` volume |
-| `recommendation` | Read-only destination search, map catalogue, recommendation scoring | Catalogue packaged in image |
-| `chat` | Authenticated shared community messages | `chat-data` volume |
+| `recommendation` | Destination details/search, place reviews, map search, recommendation scoring | Catalogue packaged in image; reviews in `recommendations-data` |
+| `chat` | Authenticated shared messages and validated media files | `chat-data` volume |
 | `gateway` | Request routing, query/body/auth forwarding, explicit upstream timeout/unavailability errors | None |
 | `frontend` | Production React bundle and same-origin `/api` proxy | None |
 
-The services run in **separate processes and containers**, not just different Python modules inside one running monolith. They reuse shared source code and a parameterized backend Dockerfile. `SERVICE_NAME` chooses each container's routers. Compose DNS resolves service names; only the frontend and gateway are published on localhost. The JWT signing key is supplied only to the user container. Other services validate sessions by calling the user API, rather than reading its JSON file.
+The services run in **separate processes and containers**, not just different Python modules inside one running monolith. They reuse shared source code and a parameterized backend Dockerfile. `SERVICE_NAME` chooses each container's routers. Compose DNS resolves service names; only the frontend and gateway are published on localhost. The JWT signing key is supplied only to the user container. Other services validate sessions by calling the user API, rather than reading its JSON file. A limited public-author lookup returns only username, display name and photo URL, so historical messages/reviews can use up-to-date avatars without exposing private profile fields.
 
 Recommendation ranking:
 
@@ -152,7 +189,7 @@ backend/
     routers/                   # REST interfaces and API gateway
     services/                  # User, destination, itinerary, profile, chat logic
   data/destinations.json        # Versioned catalogue; mutable files ignored
-  tests/test_app.py             # unittest + FastAPI TestClient regressions
+  tests/                       # Core, social/media, and Cameroon search regressions
   Dockerfile
   requirements.txt
 frontend/
@@ -160,7 +197,7 @@ frontend/
     App.jsx                    # Session, shared draft, navigation
     api.js                     # HTTP errors, sessions, cancellable reads
     components.jsx
-    pages/                     # Account, Discover, Itinerary, Map, Chat
+    pages/                     # Account, Discover, Destination, Itinerary, Map, Chat
     styles.css
   Dockerfile
   nginx.conf
@@ -217,6 +254,8 @@ Open http://localhost:5173. Native monolith OpenAPI docs: http://localhost:8000/
 | `RECOMMENDATION_SERVICE_URL` | `http://recommendation:8000` |
 | `CHAT_SERVICE_URL` | `http://chat:8000` |
 | `REQUEST_TIMEOUT_SECONDS` | 5 |
+| `GEOCODING_URL` | `https://nominatim.openstreetmap.org/search`; server-side Cameroon place search |
+| `GEOCODING_USER_AGENT` | Identifies this application to the geocoding provider; set an appropriate contact identifier before public deployment |
 | `VITE_API_BASE_URL` | `/api`; build-time only, normally leave unset |
 
 Root `.env` and optional `backend/.env` are loaded for native development; process environment overrides files. Never put secrets into frontend environment variables or a Docker build argument.
@@ -230,15 +269,25 @@ Protected requests use `Authorization: Bearer <token>`. Tokens expire after 24 h
 | POST | `/api/auth/signup`, `/api/auth/login` | Public |
 | GET | `/api/auth/me`, `/api/profile` | Signed in |
 | PUT | `/api/profile` | Current user |
+| POST | `/api/profile/avatar` | Current user; multipart `file` |
+| GET | `/api/profile/avatars/{filename}` | Public profile photo |
+| GET | `/api/profile/public?usernames=alice,bob` | Public author names/photo URLs only, at most 100 usernames |
+| GET, PUT | `/api/profile/app-rating` | Current user's app feedback |
 | GET | `/api/destinations?q=&tag=&mood=&max_cost=&continent=` | Public |
 | GET | `/api/recommendations?limit=6` | Signed in |
 | GET | `/api/map/locations` | Public |
+| GET | `/api/map/search?q=Kribi` | Public; Cameroon-only external search |
+| GET | `/api/destinations/{id}` | Public destination details, rating summary, recent reviews |
+| GET, PUT, DELETE | `/api/destinations/{id}/review` | Current user's own place review |
 | GET, POST | `/api/itineraries` | Current user's trips |
 | PUT, DELETE | `/api/itineraries/{id}` | Owner only |
 | POST, DELETE | `/api/itineraries/{id}/share` | Owner only |
 | GET | `/api/shared/itineraries/{share_id}` | Public with active link |
 | GET | `/api/itineraries/popularity` | Signed in; aggregate counts only |
 | GET, POST | `/api/chat/messages` | Signed in |
+| POST | `/api/chat/messages/upload` | Signed in; multipart `file` and optional `text`, publishes an attachment message |
+| POST | `/api/chat/media` | Signed in; standalone upload, private until linked to an owner's message |
+| GET | `/api/chat/media/{id}` | Uploader, or any signed-in user after the attachment is posted; supports byte ranges |
 | GET | `/health`, `/ready` | Operations |
 
 Example itinerary body:
@@ -266,7 +315,9 @@ cd backend
 ..\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-Tests use temporary directories, not real user data. They cover authentication, preferences/recommendations, trip validation/ownership, revocable sharing, chat, corrupt-file handling, concurrent writes/registrations, independent service calls, and gateway forwarding/failure responses.
+Tests use temporary directories, not real user data. They cover authentication, preferences/recommendations, trip validation/ownership, sharing, chat, corrupt-file handling, concurrent writes/registrations, service calls, and gateway forwarding/failure responses. Social/media regressions also cover real rating averages, review ownership, avatar updates on older content, image decoding, valid MP4 decoding, private-media access, persistence, and the exact 4,999,999 / 5,000,000 / 5,000,001-byte upload boundaries. Geocoding tests mock the external provider and verify Cameroon-only results, malformed coordinates, query validation, rate limiting, cache expiry/capacity, and explicit provider errors; the automated tests do not send requests to Nominatim.
+
+Browser checks cover destination-image navigation, review create/edit/delete, avatar propagation, unsent chat/review drafts surviving cross-tab profile refreshes, app-rating persistence, profile logout, emoji/sticker/photo/video messages, video playback, and exact-5-MB rejection. Map checks cover live Kribi search, camera movement, 2D/3D pitch controls, catalogue links, and usable lists/search without WebGL. The new pages were also checked for horizontal overflow at a 360px mobile viewport.
 
 Frontend production build:
 
@@ -286,7 +337,7 @@ Invoke-RestMethod http://localhost:8000/ready
 
 Each API exposes liveness (`/health`) and storage readiness (`/ready`). Gateway readiness checks every upstream. Request logs include service name, a request ID, status, and duration; they do not log auth tokens or message bodies. Do not assume gateway `/docs` aggregates upstream OpenAPI schemas.
 
-For backup, stop writes and back up **all three named volumes** plus the signing key securely. Keep a copy before upgrading. Native data and Docker volumes are separate stores. Restore procedures and production-grade backup automation are future work.
+For backup, stop writes and back up **all four named volumes**, including each volume's `uploads/` files, plus the signing key securely. Keep a copy before upgrading. Native data and Docker volumes are separate stores. Restore procedures and production-grade backup automation are future work.
 
 ## Course references and design decisions
 
@@ -314,6 +365,7 @@ React UI, the Cameroon photo catalogue, a geographic map, and the community loun
 - [Werkzeug password hashing](https://werkzeug.palletsprojects.com/en/stable/utils/#module-werkzeug.security)
 - [filelock documentation](https://py-filelock.readthedocs.io/en/latest/) and [HTTPX](https://www.python-httpx.org/)
 - [Docker Compose](https://docs.docker.com/compose/) and [volumes](https://docs.docker.com/engine/storage/volumes/)
-- [Leaflet reference](https://leafletjs.com/reference.html), [OpenStreetMap attribution](https://www.openstreetmap.org/copyright), and [tile usage policy](https://operations.osmfoundation.org/policies/tiles/)
+- [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/), [OpenStreetMap attribution](https://www.openstreetmap.org/copyright), and [Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/)
+- [Pillow image processing](https://pillow.readthedocs.io/) and [PyAV media decoding](https://pyav.org/docs/stable/)
 
 The supplied image files are used locally. Verify image usage rights before publishing the application publicly.

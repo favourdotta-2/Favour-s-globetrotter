@@ -2,7 +2,9 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from app.models.schemas import ProfileUpdate
+from datetime import datetime, timezone
+
+from app.models.schemas import AppRatingCreate, ProfileUpdate
 from app.services.auth_service import public_user
 from app.repositories.json_store import JsonStore
 
@@ -16,3 +18,17 @@ def update_profile(payload: ProfileUpdate, user: dict[str, Any], store: JsonStor
         raise HTTPException(404, "Profile not found")
 
     return store.mutate("users", update)
+
+
+def save_app_rating(payload: AppRatingCreate, user: dict[str, Any], store: JsonStore) -> dict[str, Any]:
+    def update(ratings: list[dict[str, Any]]) -> dict[str, Any]:
+        record = {"username": user["username"], **payload.model_dump(),
+                  "updated_at": datetime.now(timezone.utc).isoformat()}
+        for index, rating in enumerate(ratings):
+            if rating["username"] == user["username"]:
+                ratings[index] = record
+                return record
+        ratings.append(record)
+        return record
+
+    return store.mutate("app_ratings", update)
