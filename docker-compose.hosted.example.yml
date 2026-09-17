@@ -1,4 +1,5 @@
 services:
   gateway:
+    ports: !reset []
     environment:
       FRONTEND_ORIGIN: "${FRONTEND_ORIGIN:?Set FRONTEND_ORIGIN to your public HTTPS origin}"

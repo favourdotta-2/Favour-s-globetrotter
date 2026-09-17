@@ -52,7 +52,7 @@ Internet -> host Nginx :443 (trusted HTTPS)
          -> gateway:8000 -> private FastAPI services
 ```
 
-Do not replace the internal Docker service names, health-check loopback addresses, or Vite's local development proxy with the public IP. API calls and media URLs already use same-origin `/api`, and shared itinerary links use the browser's current origin, so they automatically use the HTTPS domain when hosted. The hosted Compose override sets the gateway's allowed frontend origin to that domain. Ports 5173 and 8000 stay bound to loopback; only the host Nginx should be public.
+Do not replace the internal Docker service names, health-check loopback addresses, or Vite's local development proxy with the public IP. API calls and media URLs already use same-origin `/api`, and shared itinerary links use the browser's current origin, so they automatically use the HTTPS domain when hosted. The hosted Compose override sets the gateway's allowed frontend origin to that domain and removes its published host port. The gateway remains accessible at `gateway:8000` inside Docker without reserving port 8000 on the VPS. Only the frontend's port 5173 is bound to loopback for host Nginx; only host Nginx should be public. This override requires a Docker Compose plugin with support for the `!reset` tag; an ordinary `ports: []` does not remove inherited ports.
 
 ### 1. Start the containers on the VPS
 
@@ -79,10 +79,12 @@ Before starting, ensure the VPS `.env` has `FRONTEND_ORIGIN=https://dotta-globe.
 docker compose -f docker-compose.yml -f docker-compose.hosted.yml up -d --build --wait --wait-timeout 180
 docker compose -f docker-compose.yml -f docker-compose.hosted.yml ps
 curl --fail http://127.0.0.1:5173/
-curl --fail http://127.0.0.1:8000/ready
+docker compose -f docker-compose.yml -f docker-compose.hosted.yml exec -T frontend wget -qO- http://gateway:8000/ready
 ```
 
 Keep an existing valid `SECRET_KEY` unchanged; changing it logs everyone out. An existing empty/invalid key must be corrected before starting. Do not commit `.env` or put secrets in frontend build arguments. Local accounts and uploads do not migrate to the VPS automatically: back up and transfer the four service data volumes separately if you need to preserve them. Do not delete or reset volumes to deploy.
+
+If an earlier hosted configuration fails with `port 8000 is already allocated`, add `ports: !reset []` under its `services.gateway` mapping, as in the hosted example, then rerun the hosted `up` command. Do not stop an unrelated service already using that port. An existing ignored override is not updated automatically when you pull changes. For hosted readiness, use the internal command above rather than the VPS's port 8000.
 
 ### 2. Connect the existing host Nginx
 
@@ -250,7 +252,7 @@ Recommendation API -> User API + Itinerary API for personalization
 | `gateway` | Request routing, query/body/auth forwarding, explicit upstream timeout/unavailability errors | None |
 | `frontend` | Production React bundle and same-origin `/api` proxy | None |
 
-The services run in **separate processes and containers**, not just different Python modules inside one running monolith. They reuse shared source code and a parameterized backend Dockerfile. `SERVICE_NAME` chooses each container's routers. Compose DNS resolves service names; only the frontend and gateway are published on localhost. The JWT signing key is supplied only to the user container. Other services validate sessions by calling the user API, rather than reading its JSON file. A limited public-author lookup returns only username, display name and photo URL, so historical messages/reviews can use up-to-date avatars without exposing private profile fields.
+The services run in **separate processes and containers**, not just different Python modules inside one running monolith. They reuse shared source code and a parameterized backend Dockerfile. `SERVICE_NAME` chooses each container's routers. Compose DNS resolves service names; the local setup publishes the frontend and gateway on loopback, while the hosted override publishes only the frontend on loopback for host Nginx. The JWT signing key is supplied only to the user container. Other services validate sessions by calling the user API, rather than reading its JSON file. A limited public-author lookup returns only username, display name and photo URL, so historical messages/reviews can use up-to-date avatars without exposing private profile fields.
 
 Recommendation ranking:
 
