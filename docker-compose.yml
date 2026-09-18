@@ -83,7 +83,7 @@ services:
       chat:
         condition: service_healthy
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:2025:8000"
 
   frontend:
     restart: unless-stopped
